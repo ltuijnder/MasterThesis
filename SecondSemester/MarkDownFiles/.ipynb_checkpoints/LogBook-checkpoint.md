@@ -33,6 +33,8 @@ Main work is done on the notes and these are labeled as follows:
 
 * Considering the scaling and centering for a general basis expansion turned out to be more challenging then first thought.
 
+Total hours: 8 (ish)
+
 ## 23/1/20
 
 On this day I continued analytical results with now the determination to calculate some scaling and centering effects for simple cases and not the most general basis expansion. 
@@ -59,13 +61,73 @@ Again the results are mainly on paper and what has been done is labeld as follow
 
 We should however becarefull in the case of ridgeregression since there the interpretation of the terms again changes ! And thus is not scale inviariant!.
 
+Total hours: 8 (ish)
+
+
 ## 24/1/20
 
 On this I did nothing really directly towards the master thesis itself but I learned the platform JupyterLab and started playing around with it. This is the IDE I'm planning to use for my master thesis in the future. 
 
 I also am again reading in the bayesian inference book since I want to maybe start doing bayesian inference on the data. 
 
+Total hours: a couple
+
 ## 25/1/20
 
+The creation of these logbooks and the References and a thinking about the GoalLeastSquare.
 
+Pushed then also these changes onto github
 
+Total hours: 3 
+
+## 27/1/20
+
+In the last hour of the day I thinked about how to implement the generation and fitting of the data.
+
+Total hours: 1
+
+## 28/1/20
+
+Implemented DataGen.ipynb. In this notebook I started on working the class structure "Data" from which I thought I would derive everything. 
+
+I succeeded in making the code, and made something very general that could generate data based on previous data. 
+
+Total hours: 6 (ish)
+
+## 29/1/20
+
+On this day I realised on what I created in "DataGen.ipynb" was to general and actually not suitable for time generations as I first thought. This gave me a mild discouragment on to work any further that day.
+
+Later that evening I worked a small hour or so on a new scheme on how I wanted to construct the timeseries generation.
+
+Total hours: 2 
+
+## 30/1/20
+
+On this day with now a more fresh mind I started working further out on how I would want to tackle the timegeneration. I have thought out on how to do the time generation and I also have thought about how to do the Least Square fit. 
+
+In general I also realised that I should not just start coding but first have a solid idea of what I want to code such that I code effectifly and do not waste a few days like just happend. 
+
+This day I didn't work that much (couple of hours) more like really thinking that actually doing stuff
+
+Total hours: 2
+
+## 31/1/20
+
+I started coding the timeseries code. I just wanted to do this in the morning because in the afternoon I wanted to work on my assistent job. So I endedup working 3 hours on it.
+
+I managed to code the parent class _Timeseries_, which is capable of generating a timeseries for any general set of differential equations. This was tested with an example of the harmonic oscillator which worked fine.
+
+I then ran into a problem of for the General Lotka Volterra (GLV) on how to code this. Since generating the data centered or uncenterd results in different model parameters. I didn't think through on how I wanted to manage the different model parameters for just GLV. 
+
+Do I want to generate a seperate class for this? Or do I want to manage it with flags, which is ok if it just stays to these two extensions but if it is going to be more then it becomes cumbersome. On the other hand putting it different classes results in copys of the same code. -> So maybe again doing an inherentance is the solution, but I should think about that again. And I should first more think about it analytically on what is really the difference between the two on paper. And also immediatly just think about the higher orders.
+
+Total hours: 3 
+
+# February 2020
+
+## 5/2/20
+
+I first updated the logbook, since I forgot a few days before.
+
+At 10am I had a discussion with prof. Sophie on the standing of the thesis and discussion on PHD. This is what I got out of it:
