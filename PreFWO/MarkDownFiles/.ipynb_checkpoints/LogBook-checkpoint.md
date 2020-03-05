@@ -131,3 +131,44 @@ Total hours: 3
 I first updated the logbook, since I forgot a few days before.
 
 At 10am I had a discussion with prof. Sophie on the standing of the thesis and discussion on PHD. This is what I got out of it:
+
+In the meeting it was first discussed on what I have done. Here I presented the main result that scaling for a general way does not effect the z-component. And I presented the idea I had with centering. 
+
+After a discussion (I should become better at presenting my result), we came indeed to the conclusion that we should be carefull on which model we want to interpret and think about which p_value. 
+
+Further in the discussion it was clear that I should first just focus on GLV and for the moment forget higher order terms and just write down the result in a latex document (not polished) everything about just the GLV. Such that we have a foundation to work from. 
+
+Things I need to explain and explore:
+* Explore the p-value of the GLV for different settings:
+    * First just use every time point
+    * Then do pertubations in the timeseries to try and kick it of.
+    * Explore different time resolutions, (with perfect dlog/dt and without)
+    * Explore it for different kind of noise levels. 
+    
+From this we explore in which regions of noise it is possible to infer. How many time points we need and how good the time resolutions needs to be. -> We want to ask what is the condition inorder to have good inference!
+
+Next we need to just apply the this GLV inference to Davids data and Stijns data. -> See what we can say about the confidence (think about results. Is overfitting here an issue?)
+
+These are the short term results. From there on we build and go to different methods.
+
+Total hours: 3 
+
+## 12/2/20
+
+Creation GLV.ipynb and just and started at the timeseries generation for GLV but imperially. This will probably not be continued.
+
+Total hours: 0.5
+
+## 13/2/20
+
+On this day I prepared the conversation for the meeting in the after noon. A general feeling I had from last meeting was that we loosed a bit track of what has been done and that we needed to organize it and start to write down. 
+
+So as prepartion for this meeting I went back through everything I have done to write down on a few pages of what concretely I have done. I organised this with main bullet points and also wrote of what further has to be done. 
+
+At 2pm the meeting happend and I reviewed of what I had to say. The main part was of me going over the bullet points. And the general conclusion of the meeting was that I first need to focuse of finisching GLV and HGLV. 
+
+But one of the first things that I need to figure out is of how we we are going to generate the data and which model we are going to use. And of what model we want to interpret. What the meaning of the different parameters. For this I think again my class generation of what I was doing is the best option, in order to consider of what we want to do -> giving the most flexibility. 
+
+We should also ask our self what can we controll in the generation of the data what might influence the results and what can we now for sure does not. 
+
+
