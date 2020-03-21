@@ -6,6 +6,8 @@ import itertools as it
 
 seedList1 = [  785, 38169, 44682, 15570, 13274, 44387, 28742, 34599, 39125, 18973]
 seedList2 = [13367,  5901,  8258,  2184, 39489, 11901, 21542, 25640, 12128, 11222]
+seedList1 = np.load("seedList1.npy") # unique numbers that were generated via 
+seedList2 = np.load("seedList2.npy") # np.random.randint(minInt,maxInt,size=(length))
 
 class Timeseries():
     def __init__(self, F, initialStates, timestep=0.01, tMax=100, integrationType = "Euler" 
@@ -72,6 +74,7 @@ class Timeseries():
                 self.modelDiff[experiment,i+1] = self.nextStepDiff(currentState)
                 self.noiseDiff[experiment,i+1] = self.sampleNoise(currentState)
                 self.result[experiment,i+1] = self.result[experiment,i] + self.modelDiff[experiment,i+1] + self.noiseDiff[experiment,i+1]
+        self.isGenerated = True
                 
     def sampleNoise(self, currentState):
         if self.typeNoise == "LangevinLinear":
@@ -97,24 +100,26 @@ class Timeseries():
 
 
 class TS_GLV(Timeseries):
-    def __init__(self, numberSpecies, numberExperiments, noiseParameters, genParameters, pertuParameters):
+    def __init__(self, numberSpecies, numberOfExperiments, noisePar, genPar, pertuPar):
         self.numberSpecies = numberSpecies
-        self.numberExperiments = numberExperiments
-        self.genParameters = genParameters
-        self.noiseParameters = noiseParameters
-        self.pertuParameters = pertuParameters
+        self.numberOfExperiments = numberOfExperiments
+        self.nupmberOfParameters = self.numberSpecies*(self.numberSpecies+1) # NxN + Nx1 number of parameters for GLV
+        self.genPar = genPar
+        self.noisePar = noisePar
+        self.pertuPar = pertuPar
+        
         
         # Steady State. For now this is just scaled. As is discussed before. 
         self.isScaled = True
         self.steadystate = np.ones(self.numberSpecies)
         
         # Set parameters just equal to zero for now.
-        self.growth = np.zeros((self.numberExperiments,self.numberSpecies))
-        self.interactionMatrix = np.zeros((self.numberExperiments,self.numberSpecies,self.numberSpecies))
+        self.growth = np.zeros((self.numberOfExperiments,self.numberSpecies))
+        self.interactionMatrix = np.zeros((self.numberOfExperiments,self.numberSpecies,self.numberSpecies))
         self.parametersAreGen = False
         
         # Set seed for random
-        self.seedGen = seedList2[:self.numberExperiments]
+        self.seedGen = seedList2[:self.numberOfExperiments]
         
         # Generate random matrix
         self.generateParameter()
@@ -123,17 +128,17 @@ class TS_GLV(Timeseries):
         
         
         Timeseries.__init__(self,self.GLV, self.initialStates, 
-                            noiseType=self.noiseParameters["noiseType"], noiseStrength=self.noiseParameters["noiseStrength"])
+                            noiseType=self.noisePar["noiseType"], noiseStrength=self.noisePar["noiseStrength"])
         
     
     def generateParameter(self):
-        for experiment in range(self.numberExperiments):
+        for experiment in range(self.numberOfExperiments):
             np.random.seed(self.seedGen[experiment])
             
             IsStable = False
             while not IsStable:
                 if self.isScaled:# Parameters size is steady state depended! 
-                    newMatrix = self.genParameters["interactionStrenght"]*np.random.randn(self.numberSpecies,self.numberSpecies)
+                    newMatrix = self.genPar["interactionStrenght"]*np.random.randn(self.numberSpecies,self.numberSpecies)
                     selfInter = np.random.uniform(-1.9,-0.1,size=self.numberSpecies)
                     np.fill_diagonal(newMatrix, selfInter)
                     newGrowth = - newMatrix.dot(self.steadystate)
@@ -159,6 +164,16 @@ class TS_GLV(Timeseries):
                 self.noiseDiff[experiment,i+1] = self.sampleNoise(currentState)
                 pertubation = self.pertubation(); # For the moment this is not saved.
                 self.result[experiment,i+1] = self.result[experiment,i] + self.modelDiff[experiment,i+1] + self.noiseDiff[experiment,i+1] + pertubation
+        self.isGenerated = True
+        # After everything is generated Lets construct the beta matrix
+        self.constructBeta()
+        
+    def constructBeta(self):
+        tempBeta = np.zeros(shape=(self.numberOfExperiments,self.numberSpecies+1,self.numberSpecies))
+        # growthrate:
+        tempBeta[:,0,:] = self.growth
+        tempBeta[:,1:,:] = self.interactionMatrix
+        self.beta = tempBeta
                      
     def isStable(self,matrix, steady):
         J = np.diag(steady).dot(matrix) # Jacobian
@@ -169,11 +184,11 @@ class TS_GLV(Timeseries):
             
     def pertubation(self,isInitial=False):
         if isInitial:
-            return self.steadystate + self.pertuParameters["strenght"]*np.random.randn(self.numberExperiments,self.numberSpecies)
+            return self.steadystate + self.pertuPar["strenght"]*np.random.randn(self.numberOfExperiments,self.numberSpecies)
         else:
-            number = int(self.pertuParameters["period"]/self.timestep)
+            number = int(self.pertuPar["period"]/self.timestep)
             if self.i%number==0:
-                return self.pertuParameters["strenght"]*np.random.randn(self.numberSpecies)
+                return self.pertuPar["strenght"]*np.random.randn(self.numberSpecies)
             else:
                 return np.zeros(self.numberSpecies)
             
