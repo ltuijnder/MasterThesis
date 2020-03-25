@@ -132,37 +132,45 @@ class TS_GLV(Timeseries):
         
     
     def generateParameter(self):
+        self.numberOfAttempts = np.zeros(self.numberOfExperiments)
         for experiment in range(self.numberOfExperiments):
             np.random.seed(self.seedGen[experiment])
             
             IsStable = False
+            attempts = 0 
             while not IsStable:
                 if self.isScaled:# Parameters size is steady state depended! 
                     newMatrix = self.genPar["interactionStrenght"]*np.random.randn(self.numberSpecies,self.numberSpecies)
                     selfInter = np.random.uniform(-1.9,-0.1,size=self.numberSpecies)
                     np.fill_diagonal(newMatrix, selfInter)
-                    newGrowth = - newMatrix.dot(self.steadystate)
+                    newGrowth = - self.steadystate@newMatrix
                 
                     IsStable = self.isStable(newMatrix, self.steadystate)
                 else:
                     print("Error: Non scaled is not supported yet!")
                     return
+                attempts += 1
             self.growth[experiment] = newGrowth
             self.interactionMatrix[experiment] = newMatrix
+            self.numberOfAttempts[experiment] = attempts
         self.parametersAreGen = True
         
     def generate(self): # redefine generate to now also add pertubation;
+        self.hasPerturbed = np.zeros((self.numberOfExperiments,self.numberOfPoints-1),dtype=bool)
         for experiment in range(self.numberOfExperiments):
             # set seed for the experiment
             self.e = experiment
             np.random.seed(self.seeds[experiment])
             for i in range(self.numberOfPoints-1):# -1 because we look at the next state
-                self.i = i+1
+                self.i = i+1 # the itteration for which we now want to compute the new state
                 currentState = self.result[experiment,i,:]
                 # Compute next step and store it immediatly
                 self.modelDiff[experiment,i+1] = self.nextStepDiff(currentState)
                 self.noiseDiff[experiment,i+1] = self.sampleNoise(currentState)
                 pertubation = self.pertubation(); # For the moment this is not saved.
+                if not np.all(pertubation==0):
+                    self.hasPerturbed[experiment, i] = True 
+                
                 self.result[experiment,i+1] = self.result[experiment,i] + self.modelDiff[experiment,i+1] + self.noiseDiff[experiment,i+1] + pertubation
         self.isGenerated = True
         # After everything is generated Lets construct the beta matrix
@@ -176,7 +184,7 @@ class TS_GLV(Timeseries):
         self.beta = tempBeta
                      
     def isStable(self,matrix, steady):
-        J = np.diag(steady).dot(matrix) # Jacobian
+        J = np.diag(steady).dot(matrix.T) # Jacobian, # Transpose! 
         if np.any(np.real(np.linalg.eigvals(J)) > 0):
             return False
         else:
@@ -196,6 +204,6 @@ class TS_GLV(Timeseries):
         if self.parametersAreGen == False:
             print("Error: model parameters have not been generated")
             return
-        return currentState * self.growth[self.e] + currentState * np.dot(self.interactionMatrix[self.e],currentState)
+        return currentState*(self.growth[self.e] + np.dot(currentState,self.interactionMatrix[self.e]))
         
         

@@ -42,3 +42,42 @@ def plotM(Matrix,title,mode="Diff"):
     if setColorBar:
         fig.colorbar(cax)
     plt.show()
+    
+def plot3DY(Y,X,Exp = 0,Ynumber = 0):
+    fig = plt.figure(figsize = (5,5))
+    ax = fig.add_subplot(111,projection='3d')
+    
+    YData = Y[Exp,:,Ynumber]
+    testXSpecies1 =  X[Exp,:,1]
+    testXSpecies2 =  X[Exp,:,2]
+    ax.plot(testXSpecies1,testXSpecies2,YData,"*", alpha=0.1)
+    plt.xlabel("Species1")
+    plt.ylabel("Species2")
+    
+    
+def plot2DScatter(Y,X,xaxis="1",yaxis="2",Exp = 0,Ynumber = 0):
+    fig = plt.figure(figsize = (5,5))
+    ax = fig.add_subplot(111)
+    
+    YData = Y[Exp,:,Ynumber]
+    testXSpecies1 =  X[Exp,:,1]
+    testXSpecies2 =  X[Exp,:,2]
+    
+    if xaxis == "1":
+        X_ = testXSpecies1
+    elif xaxis == "2":
+        X_ = testXSpecies2
+    else:
+        pass
+    
+    if yaxis == "1":
+        Y_ = testXSpecies1
+    elif yaxis == "2":
+        Y_ = testXSpecies2
+    else:
+        Y_ = YData
+        
+        
+    ax.plot(X_,Y_,"*",alpha=0.5)
+    plt.xlabel(xaxis)
+    plt.ylabel(yaxis)

@@ -86,7 +86,7 @@ class fitGLV:
         
         # Incorporation of the look else where effect. Whe make the result less significant
         # By multiplying with the number of parameters.
-        self.pNull*=self.numberOfParameters
+        #self.pNull*=self.numberOfParameters
         self.pNull[self.pNull>1] = 1 # When multiplied by number parameters. Prob. cannot go above 1. 
         self.pNullSigma = np.abs(stats.norm.ppf(self.pNull/2))
         self.pValueIsComputed = True
@@ -105,7 +105,7 @@ class fitGLV:
         
         DF = self.Y.shape[-2]-self.BEst.shape[-2]# self.Y.shape[-2] = number of effective used points used. Without pertubation = number of timepoints.
         p = 2*(1 - stats.t.cdf(np.abs(Z),df=DF))
-        p *= self.numberOfParameters # look else where effect
+        #p *= self.numberOfParameters # look else where effect
         p[p>1]=1 # When multiplied by number of parameters. Prob. cannot go above 1. 
         pSigma = np.abs(stats.norm.ppf(p/2))
         
@@ -128,6 +128,10 @@ class fitGLV:
         if self.typeInput == "TS_GLV":
             dln = np.diff(np.log(self.TS.result),axis=-2) # Axis =-1 is species, -2 = temporal, -3 and higher is experiment and batch
             self.Y = dln/self.TS.timestep
+            
+            # Remove pertubed entries, since these lead to false Y values.
+            boolHasPertu = self.TS.hasPerturbed[0]# For now it is assumed that pertubation for all exp are same. 
+            self.Y =  self.Y[:,~boolHasPertu] # "~" = Not      
         elif self.typeInput == "Data":
             self.Y = self.data.y
         else:
@@ -140,6 +144,10 @@ class fitGLV:
             FullX = np.append(ones,self.TS.result, axis = -1)
             # However we need to remove the last element since our output Y is calculated based on output on a difference which can not be computed for the last element. 
             self.X = np.delete(FullX, -1, axis = -2)
+            
+            # Remove pertubed entries, since these lead to false Y values.
+            boolHasPertu = self.TS.hasPerturbed[0]# For now it is assumed that pertubation for all exp are same. 
+            self.X =  self.X[:,~boolHasPertu] # "~" = Not
         elif self.typeInput == "Data":
             numberOfExperiments, numberOfPoints, numberOfSpecies = self.data.x.shape
             ones = np.ones(shape=(numberOfExperiments, numberOfPoints, 1)) # Watch out not pertubation dependent.
