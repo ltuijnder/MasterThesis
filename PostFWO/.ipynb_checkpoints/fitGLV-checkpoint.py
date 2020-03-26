@@ -37,8 +37,13 @@ class fitGLV:
         XT = self.X.transpose(0,2,1)# Assume 3D shape. But can be easily done more general. 
         
         # Now compute the estimated beta. "@" is the matrix multiplication and can handle stacked matrixes like here!
-        self.BEst = np.linalg.inv(XT@self.X)@XT@self.Y # BEst = beta estimate
-        
+        try:
+            self.BEst = np.linalg.inv(XT@self.X)@XT@self.Y # BEst = beta estimate
+        except:
+            print("Singular matrix encountered")
+            numberExp = self.X.shape[0]
+            numberSpecies = self.Y.shape[-1]
+            self.BEst = np.full((numberExp,numberSpecies+1,numberSpecies),np.nan)
         self.isFitted = True
     
     def computeVarBEst(self):
@@ -57,16 +62,21 @@ class fitGLV:
         # Next we compute the variance of the parameters
         # Important is that var(B_i)=(XT@X)*varEst_i, 
         # thus for species i which is a column i in BEst has now a matrix. Before we kept this matrix. Here we just keep the diag and convert it to column.
-        
-        varOneSpecies = np.diagonal(np.linalg.inv(XT@self.X),axis1=-2,axis2=-1)
-        lenDiag = varOneSpecies.shape[-1]
-        # Take the diagonal which is now a row vector and make it into a column and copy the column multiple times
-        copied = np.repeat(varOneSpecies.reshape(varOneSpecies.shape + (1,)), self.varEst.shape[-1], axis=-1)
-        # The estimated varBEst is now each column multiplied by its respective sigma. For this we first need to broadcast the sigmas into the correct shape
-        self.varBEst = copied * np.repeat( self.varEst.reshape(self.varEst.shape[-2],1,self.varEst.shape[-1]), lenDiag, axis=-2) 
-        # What is happening is easier to see with the following test examples
-        # varEst = np.array([[1,2,3],[4,5,6]]) # where axis =0 # number of experiments, axis=1 number of species
-        # np.repeat(test.reshape(2,1,3),2,axis=-2) # we then add an axis in the middle and copy that number of parameters needed for 1 species = lenDiag
+        try:
+            varOneSpecies = np.diagonal(np.linalg.inv(XT@self.X),axis1=-2,axis2=-1)
+            lenDiag = varOneSpecies.shape[-1]
+            # Take the diagonal which is now a row vector and make it into a column and copy the column multiple times
+            copied = np.repeat(varOneSpecies.reshape(varOneSpecies.shape + (1,)), self.varEst.shape[-1], axis=-1)
+            # The estimated varBEst is now each column multiplied by its respective sigma. For this we first need to broadcast the sigmas into the correct shape
+            self.varBEst = copied * np.repeat( self.varEst.reshape(self.varEst.shape[-2],1,self.varEst.shape[-1]), lenDiag, axis=-2) 
+            # What is happening is easier to see with the following test examples
+            # varEst = np.array([[1,2,3],[4,5,6]]) # where axis =0 # number of experiments, axis=1 number of species
+            # np.repeat(test.reshape(2,1,3),2,axis=-2) # we then add an axis in the middle and copy that number of parameters needed for 1 species = lenDiag
+        except:
+            print("Singular matrix encountered")
+            numberExp = self.X.shape[0]
+            numberSpecies = self.Y.shape[-1]
+            self.varBEst = np.full((numberExp,numberSpecies+1,numberSpecies),np.nan)
         self.varIsEstimated = True
         
         

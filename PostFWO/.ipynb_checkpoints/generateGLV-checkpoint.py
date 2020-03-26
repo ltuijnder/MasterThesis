@@ -100,7 +100,7 @@ class Timeseries():
 
 
 class TS_GLV(Timeseries):
-    def __init__(self, numberSpecies, numberOfExperiments, noisePar, genPar, pertuPar):
+    def __init__(self, numberSpecies, numberOfExperiments, noisePar, genPar, pertuPar, timestep_=0.01):
         self.numberSpecies = numberSpecies
         self.numberOfExperiments = numberOfExperiments
         self.nupmberOfParameters = self.numberSpecies*(self.numberSpecies+1) # NxN + Nx1 number of parameters for GLV
@@ -128,7 +128,7 @@ class TS_GLV(Timeseries):
         
         
         Timeseries.__init__(self,self.GLV, self.initialStates, 
-                            noiseType=self.noisePar["noiseType"], noiseStrength=self.noisePar["noiseStrength"])
+                            noiseType=self.noisePar["noiseType"], noiseStrength=self.noisePar["noiseStrength"],timestep = timestep_)
         
     
     def generateParameter(self):
