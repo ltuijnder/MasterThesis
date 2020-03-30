@@ -5,8 +5,9 @@ from helpFunctions import * # Contains the plotting stuff.
 
 
 class fitGLV:
-    def __init__(self, data, typeInput = "TS_GLV"):
+    def __init__(self, data, typeInput = "TS_GLV",stepSample = None):
         self.typeInput = typeInput
+        self.stepSample =stepSample
         
         # Incase of normal TS input 
         if self.typeInput == "TS_GLV" and data.isGenerated: # Python is lazy in checking!
@@ -19,9 +20,13 @@ class fitGLV:
                 1,numberOfSpecies+1,numberOfSpecies),numberOfExperiments,axis=0)
         else:
             print("Error: The timeseries needs to be generated.")
+            
         # compute the relevant y for the model. This can be overwritten for different models
-        self.computeY() # output
-        self.computeX() # input
+        if self.stepSample is None or self.typeInput=="Data": # Subsampling is only relevant for timeseries data
+            self.computeY() # output
+            self.computeX() # input
+        else:
+            self.subSampledXY()
         
         # Compute number of parameters, to incorporate the look else where effect
         nSpecies = self.Y.shape[-1]# number of columns
@@ -31,6 +36,7 @@ class fitGLV:
         self.isFitted = False
         self.varIsEstimated = False
         self.pValueIsComputed = False
+        self.hasBeenSampled = False
     
     def fitLinear(self):# General fit function. This creates all the wanted variables.
         # Construct data matrix X.
@@ -150,7 +156,7 @@ class fitGLV:
         
     def computeX(self):
         if self.typeInput == "TS_GLV":
-            ones = np.ones(shape=(self.TS.numberOfExperiments, self.TS.numberOfPoints, 1)) # Watch out not pertubation dependent. 
+            ones = np.ones(shape=(self.TS.numberOfExperiments, self.TS.numberOfPoints, 1)) 
             FullX = np.append(ones,self.TS.result, axis = -1)
             # However we need to remove the last element since our output Y is calculated based on output on a difference which can not be computed for the last element. 
             self.X = np.delete(FullX, -1, axis = -2)
@@ -160,11 +166,52 @@ class fitGLV:
             self.X =  self.X[:,~boolHasPertu] # "~" = Not
         elif self.typeInput == "Data":
             numberOfExperiments, numberOfPoints, numberOfSpecies = self.data.x.shape
-            ones = np.ones(shape=(numberOfExperiments, numberOfPoints, 1)) # Watch out not pertubation dependent.
+            ones = np.ones(shape=(numberOfExperiments, numberOfPoints, 1))
             self.X = np.append(ones,self.data.x, axis = -1)
             # Here we do not remove the last layer since we did not compute any difference with the Y
         else:
             pass
+        
+    def subSampledXY(self):
+        # First extract results and pertubation results and timestep data.
+        # We need to be smart about how we subsample and see that we do not create invalid data with the pertubations
+        boolHasPertu = self.TS.hasPerturbed[0]
+        result = self.TS.result
+        timestep = self.TS.timestep
+        tMax = self.TS.tMax
+        
+        # First compute the subsampled Y and X, Subsample the results using numpy slicing methods
+        # start:stop:step
+        result = result[:,0:result.shape[1]:self.stepSample,:]
+        timestep *= self.stepSample # De lengte van de timestep wordt verlengt! 
+        dln = np.diff(np.log(result),axis=-2)
+        self.Y = dln/timestep
+        
+        ones = np.ones(shape=(result.shape[0], result.shape[1], 1)) 
+        FullX = np.append(ones,result, axis = -1)
+        self.X = np.delete(FullX, -1, axis = -2)
+        
+        # An entry that is compute between the difference of two results is removed if a pertubation happened between those.
+        # Construct the boolian array that satisfy these conditions. 
+        # For this we taken an OR from non-overlapping windows of "boolHasPertu" (see notes)
+        # For this create multidimension array where each row represents a window.
+        multiD = boolHasPertu[:(len(boolHasPertu)//self.stepSample)*self.stepSample].reshape(-1,self.stepSample) # We have to cut of the last part (which is btw also removed in Y)
+        boolHasPertu = np.sum(multiD,axis=1,dtype="bool")
+        print(np.where(boolHasPertu))
+        # now update the XY
+        self.Y =  self.Y[:,~boolHasPertu]
+        self.X =  self.X[:,~boolHasPertu]
+        
+        
+        
+        
+        
+        
+        
+        self.hasBeenSampled = True
+        
+        
+        
         
         
 #############################
@@ -205,7 +252,8 @@ def computeSummary(p, sigma, trueMatrix, withModified = True):
     sigmaI = withOutG[~np.isnan(withOutG)].reshape(e,-1) # sigma Interaction.
     ###############
     # Now compute the wanted statistics per group and a weighted average
-
+    
+    
     signThreshold = 3 # significance threshold.
     w = np.array([15,10,75]) # [G,S,I]
     totW = np.sum(w)
