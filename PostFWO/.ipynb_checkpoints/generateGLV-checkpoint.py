@@ -103,7 +103,7 @@ class TS_GLV(Timeseries):
     def __init__(self, numberSpecies, numberOfExperiments, noisePar, genPar, pertuPar, timestep_=0.01):
         self.numberSpecies = numberSpecies
         self.numberOfExperiments = numberOfExperiments
-        self.nupmberOfParameters = self.numberSpecies*(self.numberSpecies+1) # NxN + Nx1 number of parameters for GLV
+        #self.numberOfParameters = self.numberSpecies*(self.numberSpecies+1) # NxN + Nx1 number of parameters for GLV
         self.genPar = genPar
         self.noisePar = noisePar
         self.pertuPar = pertuPar
@@ -128,7 +128,9 @@ class TS_GLV(Timeseries):
         
         
         Timeseries.__init__(self,self.GLV, self.initialStates, 
-                            noiseType=self.noisePar["noiseType"], noiseStrength=self.noisePar["noiseStrength"],timestep = timestep_)
+                            noiseType=self.noisePar["noiseType"], 
+                            noiseStrength=self.noisePar["noiseStrength"],
+                            timestep = timestep_)
         
     
     def generateParameter(self):
@@ -155,6 +157,9 @@ class TS_GLV(Timeseries):
             self.numberOfAttempts[experiment] = attempts
         self.parametersAreGen = True
         
+        # After everything is generated Lets construct the beta matrix
+        self.constructBeta()
+        
     def generate(self): # redefine generate to now also add pertubation;
         self.hasPerturbed = np.zeros((self.numberOfExperiments,self.numberOfPoints-1),dtype=bool)
         for experiment in range(self.numberOfExperiments):
@@ -173,8 +178,18 @@ class TS_GLV(Timeseries):
                 
                 self.result[experiment,i+1] = self.result[experiment,i] + self.modelDiff[experiment,i+1] + self.noiseDiff[experiment,i+1] + pertubation
         self.isGenerated = True
-        # After everything is generated Lets construct the beta matrix
-        self.constructBeta()
+        
+        # Also check which experiments are valid and which not.
+        self.validExperiment = np.ones(self.numberOfExperiments,dtype="bool")
+        for exp in range(self.numberOfExperiments):
+            res = self.result[exp]
+            if np.any(np.isnan(res)): # Overflow happend and it could not finish.
+                self.validExperiment[exp]=False
+                continue
+            if np.any(res[-1]<self.steadystate*0.0001): # A species has died of.
+                self.validExperiment[exp]=False
+                continue
+            
         
     def constructBeta(self):
         tempBeta = np.zeros(shape=(self.numberOfExperiments,self.numberSpecies+1,self.numberSpecies))

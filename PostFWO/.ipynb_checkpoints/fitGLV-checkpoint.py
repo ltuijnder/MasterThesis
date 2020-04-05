@@ -12,7 +12,11 @@ class fitGLV:
         # Incase of normal TS input 
         if self.typeInput == "TS_GLV" and data.isGenerated: # Python is lazy in checking!
             self.TS = data
-            self.trueMat =  self.TS.beta
+            numSpecies = self.TS.result.shape[-1]
+            if self.TS.beta.shape[-2]>(numSpecies+1): # Aka the data was generated from higher.
+                self.trueMat =  self.TS.beta[self.TS.validExperiment,:(numSpecies+1)]
+            else:
+                self.trueMat =  self.TS.beta[self.TS.validExperiment]# Only keep valid experiment data!
         elif self.typeInput == "Data":
             self.data = data
             numberOfExperiments, numberOfPoints, numberOfSpecies = self.data.x.shape
@@ -29,8 +33,11 @@ class fitGLV:
             self.subSampledXY()
         
         # Compute number of parameters, to incorporate the look else where effect
-        nSpecies = self.Y.shape[-1]# number of columns
-        self.numberOfParameters = nSpecies*(nSpecies+1)
+        #nSpecies = self.Y.shape[-1]# number of columns
+        #self.numberOfParameters = nSpecies*(nSpecies+1)
+        
+        # Add summary function
+        self.summaryFunction = computeSummaryGLV
         
         # Flags
         self.isFitted = False
@@ -47,9 +54,7 @@ class fitGLV:
             self.BEst = np.linalg.inv(XT@self.X)@XT@self.Y # BEst = beta estimate
         except:
             print("Singular matrix encountered")
-            numberExp = self.X.shape[0]
-            numberSpecies = self.Y.shape[-1]
-            self.BEst = np.full((numberExp,numberSpecies+1,numberSpecies),np.nan)
+            self.BEst = np.full(self.trueMat.shape,np.nan)
         self.isFitted = True
     
     def computeVarBEst(self):
@@ -58,11 +63,11 @@ class fitGLV:
             self.fitLinear()
         XT = self.X.transpose(0,2,1)# Assume 3D shape. But can be easily done more general. 
         
-        YPredict = self.X@self.BEst
+        YPredict = self.X@self.BEst # Correctly treats it as stacked matrixes.
         
         # Next we compute the sample variance of the data
         diffSquare = np.power(self.Y-YPredict,2)
-        normFactor = np.power(float(YPredict.shape[-2] - self.BEst.shape[0]),-1) # We estimate var per species, hence we need number of degree of one species which is shape[0]
+        normFactor = np.power(float(YPredict.shape[-2] - self.BEst.shape[-2]),-1) # We estimate var per species, hence we need number of degree of one species which is shape[-2] # -1 = number columns, -2 = number rows!
         self.varEst = normFactor * np.sum(diffSquare,axis = -2) # Sum over the column aka sum over one species
         
         # Next we compute the variance of the parameters
@@ -80,9 +85,7 @@ class fitGLV:
             # np.repeat(test.reshape(2,1,3),2,axis=-2) # we then add an axis in the middle and copy that number of parameters needed for 1 species = lenDiag
         except:
             print("Singular matrix encountered")
-            numberExp = self.X.shape[0]
-            numberSpecies = self.Y.shape[-1]
-            self.varBEst = np.full((numberExp,numberSpecies+1,numberSpecies),np.nan)
+            self.varBEst = np.full(self.trueMat.shape,np.nan)
         self.varIsEstimated = True
         
         
@@ -107,7 +110,7 @@ class fitGLV:
         self.pNullSigma = np.abs(stats.norm.ppf(self.pNull/2))
         self.pValueIsComputed = True
         
-        self.nullSummary = computeSummary(self.pNull, self.pNullSigma, self.trueMat)
+        self.nullSummary = self.summaryFunction(self.pNull, self.pNullSigma, self.trueMat)
         
     def hypo(self,betaHypo,ExpNum=None,plot=True, plotNumb=0):
         # ExpNum: if betaHypo is just one experiment matrix. then it should be said to which exp it should be compared.
@@ -131,8 +134,8 @@ class fitGLV:
             else:
                 plotM(pSigma,f"Hypo. P-value exp. {ExpNum}",mode="Sigma")
         
-        summary = computeSummary(p, pSigma, self.trueMat, withModified = False)
-        return (p, pSigma, computeSummary)
+        summary = self.summaryFunction(p, pSigma, self.trueMat, withModified = False)
+        return (p, pSigma, summary)
             
     def plotNullHypo(self,number=0):
         if not self.pValueIsComputed:
@@ -142,12 +145,17 @@ class fitGLV:
     
     def computeY(self): # Since this class is called GLV. but can be overwritten in child classes
         if self.typeInput == "TS_GLV":
-            dln = np.diff(np.log(self.TS.result),axis=-2) # Axis =-1 is species, -2 = temporal, -3 and higher is experiment and batch
+            # Remove invalid experiments
+            validResult = self.TS.result[self.TS.validExperiment]
+            
+            dln = np.diff(np.log(validResult),axis=-2) # Axis =-1 is species, -2 = temporal, -3 and higher is experiment and batch
             self.Y = dln/self.TS.timestep
             
             # Remove pertubed entries, since these lead to false Y values.
-            boolHasPertu = self.TS.hasPerturbed[0]# For now it is assumed that pertubation for all exp are same. 
-            self.Y =  self.Y[:,~boolHasPertu] # "~" = Not      
+            aValidExp = np.where(self.TS.validExperiment)[0][0] # Pick an index of valid experiment.
+            boolHasPertu = self.TS.hasPerturbed[aValidExp]# For now it is assumed that pertubation for all exp are same. 
+            self.Y =  self.Y[:,~boolHasPertu] # "~" = Not 
+            #print("Hello")
         elif self.typeInput == "Data":
             self.Y = self.data.y
         else:
@@ -156,13 +164,16 @@ class fitGLV:
         
     def computeX(self):
         if self.typeInput == "TS_GLV":
-            ones = np.ones(shape=(self.TS.numberOfExperiments, self.TS.numberOfPoints, 1)) 
-            FullX = np.append(ones,self.TS.result, axis = -1)
+            numberOfValidExp = np.sum(self.TS.validExperiment)
+            ones = np.ones(shape=(numberOfValidExp, self.TS.numberOfPoints, 1)) 
+            validResult = self.TS.result[self.TS.validExperiment]
+            FullX = np.append(ones,validResult, axis = -1)
             # However we need to remove the last element since our output Y is calculated based on output on a difference which can not be computed for the last element. 
             self.X = np.delete(FullX, -1, axis = -2)
             
             # Remove pertubed entries, since these lead to false Y values.
-            boolHasPertu = self.TS.hasPerturbed[0]# For now it is assumed that pertubation for all exp are same. 
+            aValidExp = np.where(self.TS.validExperiment)[0][0] # Pick an index of valid experiment. 
+            boolHasPertu = self.TS.hasPerturbed[aValidExp]# For now it is assumed that pertubation for all exp are same. 
             self.X =  self.X[:,~boolHasPertu] # "~" = Not
         elif self.typeInput == "Data":
             numberOfExperiments, numberOfPoints, numberOfSpecies = self.data.x.shape
@@ -170,20 +181,22 @@ class fitGLV:
             self.X = np.append(ones,self.data.x, axis = -1)
             # Here we do not remove the last layer since we did not compute any difference with the Y
         else:
-            pass
+            print("Not supported inputData")
+            return
         
     def subSampledXY(self):
         # First extract results and pertubation results and timestep data.
         # We need to be smart about how we subsample and see that we do not create invalid data with the pertubations
-        boolHasPertu = self.TS.hasPerturbed[0]
-        result = self.TS.result
-        timestep = self.TS.timestep
-        tMax = self.TS.tMax
+        aValidExp = np.where(self.TS.validExperiment)[0][0] # Pick an index of valid experiment.  
+        boolHasPertu = self.TS.hasPerturbed[aValidExp]
+        
+        result = self.TS.result[self.TS.validExperiment] # Only evaluate valid results
+        timestep = self.TS.timestep #  = 0.01
         
         # First compute the subsampled Y and X, Subsample the results using numpy slicing methods
         # start:stop:step
-        result = result[:,0:result.shape[1]:self.stepSample,:]
-        timestep *= self.stepSample # De lengte van de timestep wordt verlengt! 
+        result = result[: , 0:result.shape[1]:self.stepSample , :]
+        timestep *= self.stepSample # 0.01 * stepSample =0.02 
         dln = np.diff(np.log(result),axis=-2)
         self.Y = dln/timestep
         
@@ -197,17 +210,10 @@ class fitGLV:
         # For this create multidimension array where each row represents a window.
         multiD = boolHasPertu[:(len(boolHasPertu)//self.stepSample)*self.stepSample].reshape(-1,self.stepSample) # We have to cut of the last part (which is btw also removed in Y)
         boolHasPertu = np.sum(multiD,axis=1,dtype="bool")
-        print(np.where(boolHasPertu))
         # now update the XY
         self.Y =  self.Y[:,~boolHasPertu]
         self.X =  self.X[:,~boolHasPertu]
-        
-        
-        
-        
-        
-        
-        
+
         self.hasBeenSampled = True
         
         
@@ -218,7 +224,7 @@ class fitGLV:
 ### HELP FUNCTION ###########
 #############################
 
-def computeSummary(p, sigma, trueMatrix, withModified = True):
+def computeSummaryGLV(p, sigma, trueMatrix, withModified = True):
     # e = number experiments, n = number species
     # p, sigma = 3 dimensional matrixes.
     # trueMatrix = true 3 dimensional coeffiecient matrix
@@ -227,7 +233,7 @@ def computeSummary(p, sigma, trueMatrix, withModified = True):
     Summary = {}
     
     #############################################################
-    # first we need to make check that they are non valid entries
+    # first we need to make that they are non valid entries
     indexInvalidExp = []
     for i in range(e):
         isNan = np.any(np.isnan(p[i]))
@@ -247,7 +253,6 @@ def computeSummary(p, sigma, trueMatrix, withModified = True):
     indexAxis0 = np.repeat(np.arange(e),n)# Example n=3, e=2 [0,0,0,1,1,1]
     indexAxis1And2 = np.tile(np.arange(n),e)# Example  n=3, e=2 [0,1,2,0,1,2]
     
-    areAlreadyNan = np.isnan(withOutG)# It is possible for there to be Nan.
     withOutG[(indexAxis0 , indexAxis1And2 , indexAxis1And2)] = np.nan # Put the diagonal of the stacked matrix = Nan
     sigmaI = withOutG[~np.isnan(withOutG)].reshape(e,-1) # sigma Interaction.
     ###############
