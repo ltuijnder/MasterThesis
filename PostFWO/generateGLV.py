@@ -51,8 +51,9 @@ class Timeseries():
         if integrationType == "Euler":
             self.integrationType = integrationType
             self.nextStepDiff = self.eulerDiff # The euler integration is just method defined here. 
-        elif integrationType == "insertOtherType":#like Runge-Kutta
-            pass
+        elif integrationType == "RK4":#like Runge-Kutta
+            self.integrationType = integrationType
+            self.nextStepDiff = self.RK4Diff
         else:
             print(f"Integration type {integrationType} is not supported")
     
@@ -83,8 +84,23 @@ class Timeseries():
     def eulerDiff(self,currentState):
         return self.timestep*self.F(currentState)
     
+    ## Runga Kutta 4th order integration
+    def RK4Diff(self,currentState):
+        return self.F1(currentState)/6+2/6*(self.F2(currentState)+self.F3(currentState))+self.F4(currentState)/6
+    def F1(self,currentState):
+        return self.timestep*self.F(currentState)
+    def F2(self,currentState):
+        currentState_F1=currentState+self.F1(currentState)/2
+        return self.timestep*self.F(currentState_F1)
+    def F3(self,currentState):
+        currentState_F2=currentState+self.F2(currentState)/2
+        return self.timestep*self.F(currentState_F2)
+    def F4(self,currentState):
+        currentState_F3=currentState+self.F3(currentState)
+        return self.timestep*self.F(currentState_F3)
+    
     def plot(self,experiment=None):
-        time = np.arange(0,self.tMax,self.timestep)
+        time = np.arange(0,self.tMax,self.timestep)[:self.numberOfPoints]
         
         for exp  in range(self.numberOfExperiments):
             if experiment is not None: # Go to the correct experiment number
@@ -100,7 +116,7 @@ class Timeseries():
 
 
 class TS_GLV(Timeseries):
-    def __init__(self, numberSpecies, numberOfExperiments, noisePar, genPar, pertuPar, timestep_=0.01):
+    def __init__(self, numberSpecies, numberOfExperiments, noisePar, genPar, pertuPar, timestep_=0.01, integrationType_ = "Euler"):
         self.numberSpecies = numberSpecies
         self.numberOfExperiments = numberOfExperiments
         #self.numberOfParameters = self.numberSpecies*(self.numberSpecies+1) # NxN + Nx1 number of parameters for GLV
@@ -130,7 +146,8 @@ class TS_GLV(Timeseries):
         Timeseries.__init__(self,self.GLV, self.initialStates, 
                             noiseType=self.noisePar["noiseType"], 
                             noiseStrength=self.noisePar["noiseStrength"],
-                            timestep = timestep_)
+                            timestep = timestep_,
+                            integrationType = integrationType_)
         
     
     def generateParameter(self):

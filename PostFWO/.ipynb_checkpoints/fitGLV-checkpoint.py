@@ -148,8 +148,11 @@ class fitGLV:
             # Remove invalid experiments
             validResult = self.TS.result[self.TS.validExperiment]
             
-            dln = np.diff(np.log(validResult),axis=-2) # Axis =-1 is species, -2 = temporal, -3 and higher is experiment and batch
-            self.Y = dln/self.TS.timestep
+            #dln = np.diff(np.log(validResult),axis=-2) # Axis =-1 is species, -2 = temporal, -3 and higher is experiment and batch
+            #self.Y = dln/self.TS.timestep
+            dx_x = np.diff(validResult,axis=-2)
+            dx_x /= validResult[:,0:dx_x.shape[1],:]
+            self.Y = dx_x/self.TS.timestep
             
             # Remove pertubed entries, since these lead to false Y values.
             aValidExp = np.where(self.TS.validExperiment)[0][0] # Pick an index of valid experiment.
@@ -197,8 +200,12 @@ class fitGLV:
         # start:stop:step
         result = result[: , 0:result.shape[1]:self.stepSample , :]
         timestep *= self.stepSample # 0.01 * stepSample =0.02 
-        dln = np.diff(np.log(result),axis=-2)
-        self.Y = dln/timestep
+        #dln = np.diff(np.log(result),axis=-2)
+        #self.Y = dln/timestep
+        dx_x = np.diff(result,axis=-2)
+        dx_x /= result[:,0:dx_x.shape[1],:]
+        self.Y = dx_x/timestep
+        
         
         ones = np.ones(shape=(result.shape[0], result.shape[1], 1)) 
         FullX = np.append(ones,result, axis = -1)
