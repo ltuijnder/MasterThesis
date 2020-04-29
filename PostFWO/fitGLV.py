@@ -25,7 +25,6 @@ class fitGLV:
         elif self.typeInput == "Experiment":
             self.TS = data["TS"]
             self.pertubation = data["pertu"]
-            self.normalise = data["normalise"]
         else:
             print("Error: The timeseries needs to be generated.")
             

@@ -8,8 +8,8 @@ def total_error(Theta1,Theta2):
     return(np.sum(error))
 
     
-def plotM(Matrix,title,mode="Diff"):
-    fig = plt.figure(constrained_layout=True)
+def plotM(Matrix,title,mode="Diff", figsize=(5,5)):
+    fig = plt.figure(constrained_layout=True, figsize=figsize)
     setColorBar= True
     ax = fig.add_subplot(111)
     if mode=="Diff":
