@@ -22,6 +22,10 @@ class fitGLV:
             numberOfExperiments, numberOfPoints, numberOfSpecies = self.data.x.shape
             self.trueMat = np.repeat(self.data.coefMatrix.reshape(
                 1,numberOfSpecies+1,numberOfSpecies),numberOfExperiments,axis=0)
+        elif self.typeInput == "Experiment":
+            self.TS = data["TS"]
+            self.pertubation = data["pertu"]
+            self.normalise = data["normalise"]
         else:
             print("Error: The timeseries needs to be generated.")
             
@@ -110,7 +114,12 @@ class fitGLV:
         self.pNullSigma = np.abs(stats.norm.ppf(self.pNull/2))
         self.pValueIsComputed = True
         
-        self.nullSummary = self.summaryFunction(self.pNull, self.pNullSigma, self.trueMat)
+        if self.typeInput!="Experiment":
+            self.nullSummary = self.summaryFunction(self.pNull, self.pNullSigma, self.trueMat)
+        else:
+            # replace true matrix with BEst which has the same dimension
+            # and set modified equal false
+            self.nullSummary = self.summaryFunction(self.pNull, self.pNullSigma, self.BEst, withModified=False)
         
     def hypo(self,betaHypo,ExpNum=None,plot=True, plotNumb=0):
         # ExpNum: if betaHypo is just one experiment matrix. then it should be said to which exp it should be compared.
@@ -161,6 +170,12 @@ class fitGLV:
             #print("Hello")
         elif self.typeInput == "Data":
             self.Y = self.data.y
+        elif self.typeInput == "Experiment":
+            # With the TS is 2D and there with axis=0 temporal, axis=1 species
+            dln = np.diff(np.log(self.TS), axis=0)
+            self.Y = dln/(1) # At the moment timestep = 1 day.
+            self.Y = self.Y[~self.pertubation] # Only keep the entries where it has not perturbed.
+            self.Y = self.Y.reshape((-1,)+self.Y.shape) # Add additional experiment dimension because the analysis does expect that.
         else:
             print("Not supported inputData")
             return
@@ -178,11 +193,19 @@ class fitGLV:
             aValidExp = np.where(self.TS.validExperiment)[0][0] # Pick an index of valid experiment. 
             boolHasPertu = self.TS.hasPerturbed[aValidExp]# For now it is assumed that pertubation for all exp are same. 
             self.X =  self.X[:,~boolHasPertu] # "~" = Not
+            
         elif self.typeInput == "Data":
             numberOfExperiments, numberOfPoints, numberOfSpecies = self.data.x.shape
             ones = np.ones(shape=(numberOfExperiments, numberOfPoints, 1))
             self.X = np.append(ones,self.data.x, axis = -1)
             # Here we do not remove the last layer since we did not compute any difference with the Y
+            
+        elif self.typeInput == "Experiment":
+            ones = np.ones(shape=(len(self.TS), 1))  # len(self.TS) = number of timepoints. Since there is only 
+            FullX = np.append(ones,self.TS, axis = -1) # Add the 1 in the first column
+            self.X = np.delete(FullX, -1, axis = 0) # Delete last timepoint entry
+            self.X = self.X[~self.pertubation] # Remove pertubation time points
+            self.X = self.X.reshape((-1,)+self.X.shape) # Add experiment dimension
         else:
             print("Not supported inputData")
             return

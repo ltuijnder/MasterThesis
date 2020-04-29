@@ -17,13 +17,14 @@ def plotM(Matrix,title,mode="Diff"):
     elif mode=="PosNeg":
         vmin = np.min(Matrix)
         vmax = np.max(Matrix)
-        dnorm = matplotlib.colors.DivergingNorm(vmin=vmin,vcenter=0,vmax=vmax)
+        #dnorm = matplotlib.colors.DivergingNorm(vmin=vmin,vcenter=0,vmax=vmax)
+        dnorm = matplotlib.colors.TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
         cax = ax.matshow(Matrix, cmap= "bwr",norm=dnorm)
     elif mode=="Sigma":
         vmin = 2 # Anything less then 2 sigma is basically not signifcant. 
         vmax = 6 # Everything above 6 sigma is extremly significant.
         vcenter = 3 # 3 sigma should be the threshold.
-        dnorm = matplotlib.colors.DivergingNorm(vmin=vmin,vcenter=vcenter,vmax=vmax)
+        dnorm = matplotlib.colors.TwoSlopeNorm(vmin=vmin, vcenter=vcenter, vmax=vmax)
         # convert infinit cases to 10 sigma such that the white is not given
         copyM = np.copy(Matrix)# Make first an hard copy such that we do not change anything to the original
         copyM[np.isfinite(copyM)==False]=10 # Replace it with 10 sigma. Which is redicoulisly small
