@@ -74,7 +74,7 @@ class fitGLV:
         self.varEst = normFactor * np.sum(diffSquare,axis = -2) # Sum over the column aka sum over one species
         
         # Next we compute the variance of the parameters
-        # Important is that var(B_i)=(XT@X)*varEst_i, 
+        # Important is that var(B_i)=(XT@X)^-1*varEst_i, 
         # thus for species i which is a column i in BEst has now a matrix. Before we kept this matrix. Here we just keep the diag and convert it to column.
         try:
             varOneSpecies = np.diagonal(np.linalg.inv(XT@self.X),axis1=-2,axis2=-1)
