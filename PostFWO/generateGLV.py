@@ -124,10 +124,22 @@ class TS_GLV(Timeseries):
         self.noisePar = noisePar
         self.pertuPar = pertuPar
         
-        
-        # Steady State. For now this is just scaled. As is discussed before. 
-        self.isScaled = True
-        self.steadystate = np.ones(self.numberSpecies)
+        try:  # Many code old code does not explicitly define "scaled", hence handle it with Try except.
+            self.isScaled = self.genPar["scaled"]
+        except:
+            self.isScaled = True
+            
+        if self.isScaled is False:
+            try:
+                self.steadystate = self.genPar["steadystate"].astype(float)
+                if len(self.steadystate)!=self.numberSpecies:
+                    print("Error, given steady state has not the correct amount of species")
+                    return
+            except:
+                print("Error, Set non-scaled but no steadystate has been provided.")
+                return
+        else:
+            self.steadystate = np.ones(self.numberSpecies)
         
         # Set parameters just equal to zero for now.
         self.growth = np.zeros((self.numberOfExperiments,self.numberSpecies))
@@ -158,16 +170,16 @@ class TS_GLV(Timeseries):
             IsStable = False
             attempts = 0 
             while not IsStable:
-                if self.isScaled:# Parameters size is steady state depended! 
-                    newMatrix = self.genPar["interactionStrenght"]*np.random.randn(self.numberSpecies,self.numberSpecies)
-                    selfInter = np.random.uniform(-1.9,-0.1,size=self.numberSpecies)
-                    np.fill_diagonal(newMatrix, selfInter)
-                    newGrowth = - self.steadystate@newMatrix
+                newMatrix = self.genPar["interactionStrenght"]*np.random.randn(self.numberSpecies,self.numberSpecies)
+                selfInter = np.random.uniform(-1.9,-0.1,size=self.numberSpecies)
+                np.fill_diagonal(newMatrix, selfInter)
                 
-                    IsStable = self.isStable(newMatrix, self.steadystate)
-                else:
-                    print("Error: Non scaled is not supported yet!")
-                    return
+                if not self.isScaled: # Divide each column by the steady state.
+                    # Very nice post on this: https://stackoverflow.com/questions/18522216
+                    newMatrix = (newMatrix.T * self.steadystate**-1).T # a**-1 = divide by a.
+                    
+                newGrowth = - self.steadystate@newMatrix
+                IsStable = self.isStable(newMatrix, self.steadystate)
                 attempts += 1
             self.growth[experiment] = newGrowth
             self.interactionMatrix[experiment] = newMatrix
