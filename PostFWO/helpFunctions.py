@@ -30,18 +30,21 @@ def plotM(Matrix,title,mode="Diff", figsize=(5,5)):
         copyM[np.isfinite(copyM)==False]=10 # Replace it with 10 sigma. Which is redicoulisly small
         
         cax = ax.matshow(copyM, cmap= "jet",norm=dnorm)
-        cbar = fig.colorbar(cax)
-        cbar.set_label("Sigma",fontsize = 15)
-        cbar.ax.set_yticklabels(['< 2.0', '2.5', '3.0','3.5','4.0','4.5','5.0','5.5','>6.0'])
+        cbar = fig.colorbar(cax,shrink=0.7,pad=-0.02)
+        cbar.set_label(r"p-value ($\sigma$)",fontsize = 15)
+        cbar.ax.set_yticklabels(['< 2.0', '2.5', '3.0','3.5','4.0','4.5','5.0','5.5','>6.0'],fontsize=13)
         
         setColorBar = False # Set colorbar since we have already set it.
         
     plt.title(title,fontsize=18,pad=28)
-    ax.set_xlabel('Column',fontsize=15)    
+    ax.set_xlabel('Column',fontsize=17)    
     ax.xaxis.set_label_position('top') 
-    ax.set_ylabel('Row',fontsize=15)
+    ax.set_ylabel('Row',fontsize=17)
+    
+    ax.tick_params(axis='both', which='major', labelsize=13)
     if setColorBar:
-        fig.colorbar(cax)
+        fig.colorbar(cax,shrink=0.7)
+    #plt.savefig('ThesisFigures/ExperimentFig/Fit_f20SectionP.png')
     plt.show()
     
 def plot3DY(Y,X,Exp = 0,Ynumber = 0):
@@ -111,7 +114,7 @@ def plotSubSampMatrix(variable = "percent",section="I", stepSamples = (1,2,3), S
     medianData = np.load(pathToStorage+path)
     
     fig, axs = plt.subplots(nrows=3, ncols=3, sharex=True, sharey=True, figsize=(15,15))
-    fig.suptitle(f"Median {variable}{section} subsampled", fontsize=22)
+    fig.suptitle(f"Median {variable}{section} subsampled", fontsize=22, y=0.94)
         
     #loop over the axes
     
@@ -120,7 +123,7 @@ def plotSubSampMatrix(variable = "percent",section="I", stepSamples = (1,2,3), S
         for column, ax in enumerate(axs_row):
             # create labels
             if row==0:# The top row
-                ax.set_title(f"stepSamples = {stepSamples[column]}",fontsize=15)
+                ax.set_title(f"sub sample = {stepSamples[column]}",fontsize=15)
             if column==0: # The right side
                 ax.set_ylabel(f"period = {pertubations[row]}",fontsize=15)
             
@@ -154,11 +157,91 @@ def plotSubSampMatrix(variable = "percent",section="I", stepSamples = (1,2,3), S
     # Add color bar
     cax = fig.add_axes([0.9, 0.3, 0.03, 0.4])
     cbar = fig.colorbar(im, cax=cax)
-    cbar.set_label(variable,fontsize=15)
+    dictVariableName={"percent":"Fraction significant",
+                      "median":r"Median significance ($\sigma$)",
+                      "avg":r"Average significance ($\sigma$)",
+                      "numberOfGoodExp": "Fraction valid experiment"}
+    cbar.set_label(dictVariableName[variable],fontsize=15)
     # Add x and Y label
-    fig.text(0.5,0.1, "Log. Interaction strenght", ha="center", va="center",fontsize=17)
-    fig.text(0.07,0.5, "Log. noise strenght", ha="center", va="center", rotation=90,fontsize=17)  
+    fig.text(0.5,0.1, "Log. Interaction strength", ha="center", va="center",fontsize=17)
+    fig.text(0.07,0.5, "Log. noise strength", ha="center", va="center", rotation=90,fontsize=17)  
     # adjust space between pltos
     
     plt.subplots_adjust( wspace=0, hspace=0.02)
+    
+def plotSubSampMatrixSave(variable = "percent",section="I", stepSamples = (1,2,3), Self = False,pathToStorage="DataStorage/SubSampleBis/",SavePath="",FigTitle=""):
+    expoNoise = np.arange(-5,-0,0.5)
+    noises = np.power(10,expoNoise)
+    expoInteraction = np.arange(-4.5,0.5,0.5)
+    interactions = np.power(10,expoInteraction)
+    pertubations = np.array([10000,20,2])
+    subSampleSteps = np.array([1,2,3,4,5,7,9,11,13,15,20,25,30,35,40,60,80,100,120,140])
+    # Load wanted data
+    if variable == "numberOfGoodExp":
+        path = "numberOfGoodExp.npy"
+    else:
+        path = "MEDIAN"+variable+section+".npy"
+    if Self:
+        path = "Self_" +  path
+    medianData = np.load(pathToStorage+path)
+    
+    fig, axs = plt.subplots(nrows=3, ncols=3, sharex=True, sharey=True, figsize=(15,15))
+    #fig.suptitle(f"Median {variable}{section} subsampled", fontsize=22)
+    fig.suptitle(FigTitle, fontsize=22, y=0.94)
+    
+    #loop over the axes
+    
+    for row, axs_row  in enumerate(axs):
         
+        for column, ax in enumerate(axs_row):
+            # create labels
+            if row==0:# The top row
+                ax.set_title(f"sub sample = {stepSamples[column]}",fontsize=15)
+            if column==0: # The right side
+                ax.set_ylabel(f"# perturbations = {pertubations[row]}",fontsize=15)
+            
+            l = np.where(subSampleSteps==stepSamples[column])[0][0] # get back the correct index
+            
+            # Plot the data
+            if variable=="percent":
+                im = ax.matshow(medianData[row,:,:,l],cmap="jet",vmin=0, vmax=1)
+            elif variable == "numberOfGoodExp":
+                im = ax.matshow(medianData[row]/50,cmap="jet",vmin=0, vmax=1)
+            else:
+                im = ax.matshow(medianData[row,:,:,l],cmap="jet",vmin=0, vmax=6)
+            
+    
+    # Tick lables for some weird reason have to be done this way :/ 
+    rightSideAxes = (axs[0][0],axs[1][0],axs[2][0])
+    lowerSideAxes = (axs[2][0],axs[2][1],axs[2][2])
+    topSideAxes = (axs[0][0],axs[0][1],axs[0][2])
+    for ax in rightSideAxes:
+        ax.set_yticks(np.arange(len(expoNoise)))
+        ax.set_yticklabels(labels=expoNoise,fontsize=12)
+    for ax in lowerSideAxes:
+        ax.set_xticks(np.arange(len(expoInteraction)))
+        ax.set_xticklabels(labels=expoInteraction,fontsize=12)
+        
+        ax.tick_params(axis="x", bottom=True, top=True, labelbottom=True, labeltop=False)
+    for ax in topSideAxes:
+        pass
+        #ax.set_xticks(np.arange(7))
+        #ax.set_xticklabels(labels=interStength)
+        #ax.tick_params(axis="x", bottom=True, top=True, labelbottom=False, labeltop=True)
+    # Add color bar
+    cax = fig.add_axes([0.9, 0.3, 0.03, 0.4])
+    cbar = fig.colorbar(im, cax=cax)
+    dictVariableName={"percent":"Fraction significant",
+                      "median":r"Median significance ($\sigma$)",
+                      "avg":r"Average significance ($\sigma$)",
+                      "numberOfGoodExp": "Fraction valid experiment"}
+    cbar.set_label(dictVariableName[variable],fontsize=15)
+    # Add x and Y label
+    fig.text(0.5,0.095, "Log. Interaction strength", ha="center", va="center",fontsize=17)
+    fig.text(0.07,0.5, "Log. noise strength", ha="center", va="center", rotation=90,fontsize=17)  
+    # adjust space between pltos
+    
+    
+    plt.subplots_adjust( wspace=0, hspace=0.02)
+    plt.savefig(SavePath)
+
