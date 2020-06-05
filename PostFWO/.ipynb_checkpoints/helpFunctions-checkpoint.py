@@ -43,8 +43,10 @@ def plotM(Matrix,title,mode="Diff", figsize=(5,5)):
     
     ax.tick_params(axis='both', which='major', labelsize=13)
     if setColorBar:
-        fig.colorbar(cax,shrink=0.7)
-    #plt.savefig('ThesisFigures/ExperimentFig/Fit_f20SectionP.png')
+        cbar = fig.colorbar(cax,shrink=0.7)
+        if mode=="PosNeg":
+            cbar.set_label(r"Fitted parameter value",fontsize = 15)
+    #plt.savefig('ThesisFigures/ExperimentFig/Fit_f20SectionP_Infer.png')
     plt.show()
     
 def plot3DY(Y,X,Exp = 0,Ynumber = 0):
@@ -175,6 +177,7 @@ def plotSubSampMatrixSave(variable = "percent",section="I", stepSamples = (1,2,3
     expoInteraction = np.arange(-4.5,0.5,0.5)
     interactions = np.power(10,expoInteraction)
     pertubations = np.array([10000,20,2])
+    pertubationsAmount = np.array([1,5,50])
     subSampleSteps = np.array([1,2,3,4,5,7,9,11,13,15,20,25,30,35,40,60,80,100,120,140])
     # Load wanted data
     if variable == "numberOfGoodExp":
@@ -198,7 +201,7 @@ def plotSubSampMatrixSave(variable = "percent",section="I", stepSamples = (1,2,3
             if row==0:# The top row
                 ax.set_title(f"sub sample = {stepSamples[column]}",fontsize=15)
             if column==0: # The right side
-                ax.set_ylabel(f"# perturbations = {pertubations[row]}",fontsize=15)
+                ax.set_ylabel(f"# perturbations = {pertubationsAmount[row]}",fontsize=15)
             
             l = np.where(subSampleSteps==stepSamples[column])[0][0] # get back the correct index
             
@@ -244,4 +247,46 @@ def plotSubSampMatrixSave(variable = "percent",section="I", stepSamples = (1,2,3
     
     plt.subplots_adjust( wspace=0, hspace=0.02)
     plt.savefig(SavePath)
+    
+    
+def plotMSave(Matrix,title,mode="Diff", figsize=(5,5),pathToSave=""):
+    fig = plt.figure(constrained_layout=True, figsize=figsize)
+    setColorBar= True
+    ax = fig.add_subplot(111)
+    if mode=="Diff":
+        cax = ax.matshow(Matrix, cmap= "jet")
+    elif mode=="PosNeg":
+        vmin = np.min(Matrix)
+        vmax = np.max(Matrix)
+        #dnorm = matplotlib.colors.DivergingNorm(vmin=vmin,vcenter=0,vmax=vmax)
+        dnorm = matplotlib.colors.TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
+        cax = ax.matshow(Matrix, cmap= "bwr",norm=dnorm)
+    elif mode=="Sigma":
+        vmin = 2 # Anything less then 2 sigma is basically not signifcant. 
+        vmax = 6 # Everything above 6 sigma is extremly significant.
+        vcenter = 3 # 3 sigma should be the threshold.
+        dnorm = matplotlib.colors.TwoSlopeNorm(vmin=vmin, vcenter=vcenter, vmax=vmax)
+        # convert infinit cases to 10 sigma such that the white is not given
+        copyM = np.copy(Matrix)# Make first an hard copy such that we do not change anything to the original
+        copyM[np.isfinite(copyM)==False]=10 # Replace it with 10 sigma. Which is redicoulisly small
         
+        cax = ax.matshow(copyM, cmap= "jet",norm=dnorm)
+        cbar = fig.colorbar(cax,shrink=0.7,pad=0.02)
+        cbar.set_label(r"p-value ($\sigma$)",fontsize = 15)
+        cbar.ax.set_yticklabels(['< 2.0', '2.5', '3.0','3.5','4.0','4.5','5.0','5.5','>6.0'],fontsize=13)
+        
+        setColorBar = False # Set colorbar since we have already set it.
+        
+    plt.title(title,fontsize=18,pad=28)
+    ax.set_xlabel('Column',fontsize=17)    
+    ax.xaxis.set_label_position('top') 
+    ax.set_ylabel('Row',fontsize=17)
+    
+    ax.tick_params(axis='both', which='major', labelsize=13)
+    if setColorBar:
+        cbar = fig.colorbar(cax,shrink=0.7)
+        if mode=="PosNeg":
+            cbar.set_label(r"Fitted parameter value",fontsize = 15)
+    plt.savefig(pathToSave)
+    plt.show()
+
