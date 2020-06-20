@@ -171,7 +171,8 @@ class TS_GLV(Timeseries):
             attempts = 0 
             while not IsStable:
                 newMatrix = self.genPar["interactionStrenght"]*np.random.randn(self.numberSpecies,self.numberSpecies)
-                selfInter = np.random.uniform(-1.9,-0.1,size=self.numberSpecies)
+                #selfInter = np.random.uniform(-1.9,-0.1,size=self.numberSpecies)
+                selfInter = -np.ones(self.numberSpecies)
                 np.fill_diagonal(newMatrix, selfInter)
                 
                 if not self.isScaled: # Divide each column by the steady state.
